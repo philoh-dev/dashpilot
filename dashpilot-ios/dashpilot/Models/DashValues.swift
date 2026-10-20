@@ -7,7 +7,7 @@ enum DashValue {
 }
 
 extension DashState {
-    func dashValues() -> [(String, DashValue)] {
+    func dashValues(systemDarkMode: Bool? = nil) -> [(String, DashValue)] {
         let c = carState
         let d = displaySettings
         return [
@@ -44,7 +44,7 @@ extension DashState {
             ("currentTime", .number(Self.secondsSinceLocalMidnight(currentTime))),
             ("phoneBattery", .number(Float(phoneBattery))),
             ("isImperial", .bool(d.useImperial)),
-            ("darkMode", .bool(d.darkMode)),
+            ("darkMode", .bool(systemDarkMode ?? d.darkMode)),
             ("darkModeBackgroundGray", .number(Float(d.darkModeBackgroundGray))),
             ("showPhoneBattery", .bool(d.showPhoneBattery)),
             ("showCarBattery", .bool(d.showCarBattery)),

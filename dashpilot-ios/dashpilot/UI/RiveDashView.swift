@@ -20,12 +20,13 @@ struct RiveDashView: View {
     let source: URL?
     let incomingMessages: AsyncStream<DashState>
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var binder: RiveDashBinder?
     @State private var failed = false
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            (colorScheme == .dark ? Color.black : Color.white).ignoresSafeArea()
             if let binder {
                 binder.riveViewModel.view()
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
@@ -33,7 +34,7 @@ struct RiveDashView: View {
                     }
             } else if failed {
                 Text("Could not load this Rive file")
-                    .foregroundColor(.white)
+                    .foregroundColor(.primary)
             }
         }
         .task(id: source) {
@@ -41,10 +42,14 @@ struct RiveDashView: View {
                 failed = true
                 return
             }
+            binder.setSystemDarkMode(colorScheme == .dark)
             self.binder = binder
             for await state in incomingMessages {
                 binder.apply(state)
             }
+        }
+        .onChange(of: colorScheme) { _, scheme in
+            binder?.setSystemDarkMode(scheme == .dark)
         }
     }
 }
@@ -61,6 +66,7 @@ final class RiveDashBinder {
     private var bools: [String: RiveDataBindingViewModel.Instance.BooleanProperty] = [:]
     private var strings: [String: RiveDataBindingViewModel.Instance.StringProperty] = [:]
     private var missing: Set<String> = []
+    private var systemDarkMode = false
 
     init?(fileURL: URL) {
         guard let data = try? Data(contentsOf: fileURL),
@@ -83,9 +89,22 @@ final class RiveDashBinder {
         riveViewModel.layoutScaleFactor = Double(points * screenScale) / Self.artboardHeight
     }
 
+    func setSystemDarkMode(_ darkMode: Bool) {
+        systemDarkMode = darkMode
+        // Appearance must update even when no vehicle telemetry is arriving.
+        guard let instance, !missing.contains("darkMode") else { return }
+        guard let property = bools["darkMode"] ?? instance.booleanProperty(fromPath: "darkMode") else {
+            missing.insert("darkMode")
+            return
+        }
+        bools["darkMode"] = property
+        property.value = darkMode
+        if !riveViewModel.isPlaying { riveViewModel.play() }
+    }
+
     func apply(_ state: DashState) {
         guard let instance else { return }
-        for (name, value) in state.dashValues() where !missing.contains(name) {
+        for (name, value) in state.dashValues(systemDarkMode: systemDarkMode) where !missing.contains(name) {
             switch value {
             case .number(let v):
                 guard let p = numbers[name] ?? instance.numberProperty(fromPath: name) else { missing.insert(name); continue }

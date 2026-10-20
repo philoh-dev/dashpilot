@@ -1,6 +1,7 @@
 package com.softwiredtech.dashpilot.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -37,10 +38,11 @@ fun RiveDashView(
     onError: ((message: String) -> Unit),
     fileUri: String? = null
 ) {
+    val systemDarkMode = isSystemInDarkTheme()
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(if (systemDarkMode) Color.Black else Color.White)
     ) {
         val fit = Fit.Layout(constraints.maxHeight / ARTBOARD_HEIGHT)
         val context = LocalContext.current
@@ -90,7 +92,7 @@ fun RiveDashView(
                         onError("No $DASH_VIEW_MODEL in this file")
                         Rive(file, fit = fit)
                     }
-                    else -> BoundRive(file, properties!!, dashStateFlow, fit)
+                    else -> BoundRive(file, properties!!, dashStateFlow, fit, systemDarkMode)
                 }
             }
         }
@@ -103,13 +105,18 @@ private fun BoundRive(
     properties: Map<String, PropertyDataType>,
     dashStateFlow: Flow<DashState>,
     fit: Fit,
+    systemDarkMode: Boolean,
 ) {
     val vmi = rememberViewModelInstance(file, ViewModelSource.Named(DASH_VIEW_MODEL).defaultInstance())
     Rive(file, viewModelInstance = vmi, fit = fit)
 
-    LaunchedEffect(vmi, properties) {
+    LaunchedEffect(vmi, properties, dashStateFlow, systemDarkMode) {
+        // Appearance must update even when no vehicle telemetry is arriving.
+        if (properties["darkMode"] == PropertyDataType.BOOLEAN) {
+            vmi.setBoolean("darkMode", systemDarkMode)
+        }
         dashStateFlow.collect { state ->
-            for ((name, value) in state.dashValues()) {
+            for ((name, value) in state.dashValues(systemDarkMode)) {
                 when (properties[name]) {
                     PropertyDataType.NUMBER -> (value as? Float)?.let { vmi.setNumber(name, it) }
                     PropertyDataType.BOOLEAN -> (value as? Boolean)?.let { vmi.setBoolean(name, it) }

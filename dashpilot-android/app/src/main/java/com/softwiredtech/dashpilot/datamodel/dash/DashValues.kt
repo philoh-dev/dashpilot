@@ -3,7 +3,7 @@ package com.softwiredtech.dashpilot.datamodel.dash
 import java.time.Instant
 import java.time.ZoneId
 
-fun DashState.dashValues(): Map<String, Any> {
+fun DashState.dashValues(systemDarkMode: Boolean? = null): Map<String, Any> {
     val c = carState
     val d = displaySettings
     return mapOf(
@@ -40,7 +40,7 @@ fun DashState.dashValues(): Map<String, Any> {
         "currentTime" to secondsSinceLocalMidnight(currentTime),
         "phoneBattery" to phoneBattery.toFloat(),
         "isImperial" to d.useImperial,
-        "darkMode" to d.darkMode,
+        "darkMode" to (systemDarkMode ?: d.darkMode),
         "darkModeBackgroundGray" to d.darkModeBackgroundGray.toFloat(),
         "showPhoneBattery" to d.showPhoneBattery,
         "showCarBattery" to d.showCarBattery,
