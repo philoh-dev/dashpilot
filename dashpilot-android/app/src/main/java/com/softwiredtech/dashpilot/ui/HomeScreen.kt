@@ -1,12 +1,12 @@
 package com.softwiredtech.dashpilot.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -15,19 +15,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.BatteryChargingFull
 import androidx.compose.material.icons.rounded.DeviceThermostat
 import androidx.compose.material.icons.rounded.DirectionsCar
 import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -42,6 +47,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
@@ -55,7 +65,6 @@ import com.softwiredtech.dashpilot.datasource.ConnectionStatus
 import com.softwiredtech.dashpilot.datasource.DashKitBleManager
 import com.softwiredtech.dashpilot.datasource.DataSourceType
 import com.softwiredtech.dashpilot.ui.controls.ControlAction
-import com.softwiredtech.dashpilot.ui.controls.ControlActionButton
 import com.softwiredtech.dashpilot.ui.controls.controlById
 import com.softwiredtech.dashpilot.ui.tesla.TeslaTile
 import com.softwiredtech.dashpilot.ui.theme.AccentColor
@@ -72,7 +81,7 @@ fun HomeScreen(
     activeSourceType: String?,
     bleManager: DashKitBleManager?,
     dashState: StateFlow<DashState>?,
-    pinnedControlId: String?,
+    pinnedControlIds: List<String>,
     teslaStatus: StateFlow<TeslaStatus>?,
     teslaResetPending: StateFlow<Boolean>?,
     onEnrollTesla: () -> Unit,
@@ -97,7 +106,7 @@ fun HomeScreen(
                 bleManager = bleManager,
                 connectionStatus = connectionStatus,
                 activeSourceType = activeSourceType,
-                pinnedControlId = pinnedControlId,
+                pinnedControlIds = pinnedControlIds,
                 teslaStatus = teslaStatus,
                 teslaResetPending = teslaResetPending,
                 onEnrollTesla = onEnrollTesla,
@@ -125,7 +134,6 @@ fun HomeScreen(
 
 private val ScreenPadding = 24.dp
 private val GridGap = 16.dp
-private val HeaderHeight = 48.dp
 
 @Composable
 private fun ConnectedHomeContent(
@@ -133,7 +141,7 @@ private fun ConnectedHomeContent(
     bleManager: DashKitBleManager?,
     connectionStatus: ConnectionStatus,
     activeSourceType: String?,
-    pinnedControlId: String?,
+    pinnedControlIds: List<String>,
     teslaStatus: StateFlow<TeslaStatus>?,
     teslaResetPending: StateFlow<Boolean>?,
     onEnrollTesla: () -> Unit,
@@ -153,33 +161,20 @@ private fun ConnectedHomeContent(
     val tesla by (teslaStatus ?: idleTesla).collectAsState()
     val idleReset = remember { MutableStateFlow(false) }
     val resetPending by (teslaResetPending ?: idleReset).collectAsState()
-    val pinned = controlById(pinnedControlId)
+    val pinned = pinnedControlIds.mapNotNull(::controlById)
     val driveEnabled = connectionStatus == ConnectionStatus.Connected
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val landscape = maxWidth > maxHeight
-        val contentMinHeight = maxHeight - ScreenPadding * 2 - HeaderHeight - 8.dp
+        val verticalPadding = if (landscape) 12.dp else ScreenPadding
+        val contentMinHeight = maxHeight - verticalPadding * 2
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(ScreenPadding)
+                .then(if (landscape) Modifier else Modifier.verticalScroll(rememberScrollState()))
+                .padding(horizontal = ScreenPadding, vertical = verticalPadding)
         ) {
-            if (landscape) {
-                Header(
-                    showDataSource = landscape,
-                    connectionStatus = connectionStatus,
-                    activeSourceType = activeSourceType,
-                    onSelectDataSource = onSelectDataSource,
-                    onConnect = onConnect,
-                    onDisconnect = onDisconnect,
-                    onSettingsClick = onSettingsClick
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
             if (landscape) {
                 LandscapeContent(
                     minHeight = contentMinHeight,
@@ -193,7 +188,11 @@ private fun ConnectedHomeContent(
                     onBattery = onBattery,
                     onClimate = onClimate,
                     onDrive = onDrive,
-                    driveEnabled = driveEnabled
+                    driveEnabled = driveEnabled,
+                    connectionStatus = connectionStatus,
+                    dataSource = {
+                        DebugDataSourceMenu(connectionStatus, activeSourceType, onSelectDataSource, onConnect, onDisconnect)
+                    }
                 )
             } else {
                 PortraitContent(
@@ -220,38 +219,11 @@ private fun ConnectedHomeContent(
 }
 
 @Composable
-private fun Header(
-    showDataSource: Boolean,
-    connectionStatus: ConnectionStatus,
-    activeSourceType: String?,
-    onSelectDataSource: (String) -> Unit,
-    onConnect: (serverAddress: String, dataSourceType: String) -> Unit,
-    onDisconnect: () -> Unit,
-    onSettingsClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(HeaderHeight)
-    ) {
-        if (showDataSource) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 12.dp)
-            ) {
-                DebugDataSourceMenu(connectionStatus, activeSourceType, onSelectDataSource, onConnect, onDisconnect)
-            }
-        }
-    }
-}
-
-@Composable
 private fun PortraitContent(
     car: CarState,
     useImperial: Boolean,
     bleManager: DashKitBleManager?,
-    pinned: ControlAction?,
+    pinned: List<ControlAction>,
     tesla: TeslaStatus,
     resetPending: Boolean,
     connectionStatus: ConnectionStatus,
@@ -270,23 +242,8 @@ private fun PortraitContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        if (BuildConfig.DEBUG) {
-            TeslaTile(status = tesla, resetPending = resetPending, onEnroll = onEnrollTesla)
-        }
-
-        pinned?.let { action ->
-            Text(
-                text = stringResource(R.string.home_pinned),
-                color = DarkColors.TextMuted,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            PinnedButton(action = action, bleManager = bleManager)
-            Spacer(modifier = Modifier.height(24.dp))
-        }
-
-        DriveButton(onDrive, driveEnabled)
+        ConnectionPanel(pinned, bleManager, tesla, resetPending, onEnrollTesla,
+            connectionStatus, onDrive, driveEnabled, Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(12.dp))
         Box(modifier = Modifier.align(Alignment.CenterHorizontally)) {
             DebugDataSourceMenu(connectionStatus, activeSourceType, onSelectDataSource, onConnect, onDisconnect)
@@ -300,20 +257,21 @@ private fun LandscapeContent(
     car: CarState,
     useImperial: Boolean,
     bleManager: DashKitBleManager?,
-    pinned: ControlAction?,
+    pinned: List<ControlAction>,
     tesla: TeslaStatus,
     resetPending: Boolean,
     onEnrollTesla: () -> Unit,
     onBattery: () -> Unit,
     onClimate: () -> Unit,
     onDrive: () -> Unit,
-    driveEnabled: Boolean
+    driveEnabled: Boolean,
+    connectionStatus: ConnectionStatus,
+    dataSource: @Composable () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = minHeight)
-            .height(IntrinsicSize.Min),
+            .height(minHeight.coerceAtLeast(0.dp)),
         horizontalArrangement = Arrangement.spacedBy(ScreenPadding)
     ) {
         WidgetGrid(
@@ -323,31 +281,12 @@ private fun LandscapeContent(
             onBattery = onBattery,
             onClimate = onClimate,
             modifier = Modifier
-                .weight(1f)
+                .weight(0.4f)
                 .fillMaxHeight()
         )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(GridGap)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                if (BuildConfig.DEBUG) {
-                    TeslaTile(status = tesla, resetPending = resetPending, onEnroll = onEnrollTesla)
-                }
-                pinned?.let { action ->
-                    PinnedButton(action = action, bleManager = bleManager)
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-                DriveButton(onDrive, driveEnabled)
-            }
-        }
+        ConnectionPanel(pinned, bleManager, tesla, resetPending, onEnrollTesla,
+            connectionStatus, onDrive, driveEnabled,
+            Modifier.weight(0.6f).fillMaxHeight(), bounded = true, dataSource = dataSource)
     }
 }
 
@@ -410,14 +349,98 @@ private fun WidgetGrid(
 }
 
 @Composable
-private fun PinnedButton(action: ControlAction, bleManager: DashKitBleManager?) {
-    ControlActionButton(
-        action = action,
-        pinned = true,
-        enabled = bleManager != null,
-        onClick = { action.perform(bleManager) },
-        onLongClick = null
-    )
+private fun ConnectionPanel(
+    pinned: List<ControlAction>, bleManager: DashKitBleManager?, tesla: TeslaStatus,
+    resetPending: Boolean, onEnrollTesla: () -> Unit, connectionStatus: ConnectionStatus,
+    onDrive: () -> Unit, driveEnabled: Boolean, modifier: Modifier, bounded: Boolean = false,
+    dataSource: (@Composable () -> Unit)? = null
+) {
+    Column(modifier.clip(RoundedCornerShape(16.dp)).background(DarkColors.Surface).padding(16.dp)) {
+        if (BuildConfig.DEBUG) {
+            TeslaTile(status = tesla, resetPending = resetPending, onEnroll = onEnrollTesla, embedded = true)
+        } else {
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(8.dp).background(if (driveEnabled) AccentColor else DarkColors.Disabled, RoundedCornerShape(4.dp)))
+                Spacer(Modifier.width(10.dp))
+                Text(stringResource(R.string.tesla_label), color = Color.White, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f))
+                Text(stringResource(when (connectionStatus) {
+                    ConnectionStatus.Connected -> R.string.settings_firmware_info_connected
+                    ConnectionStatus.Connecting -> R.string.settings_firmware_connecting
+                    else -> R.string.settings_firmware_info_disconnected
+                }),
+                    color = DarkColors.TextMuted, fontSize = 13.sp)
+            }
+        }
+        if (pinned.isNotEmpty() || dataSource != null) {
+            HorizontalDivider(color = DarkColors.Border)
+            Row(Modifier.fillMaxWidth().padding(vertical = if (dataSource == null) 12.dp else 0.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                if (pinned.isNotEmpty()) {
+                    Text(stringResource(R.string.home_pinned), color = Color.White, fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                } else Spacer(Modifier.weight(1f))
+                dataSource?.invoke()
+            }
+        }
+        if (pinned.isNotEmpty()) {
+            PinnedGrid(pinned, bleManager,
+                if (bounded) Modifier.weight(1f) else Modifier.heightIn(max = 208.dp))
+            Spacer(Modifier.height(12.dp))
+        } else if (bounded) {
+            Spacer(Modifier.weight(1f))
+        } else {
+            Spacer(Modifier.height(12.dp))
+        }
+        DriveButton(onDrive, driveEnabled)
+    }
+}
+
+@Composable
+private fun PinnedGrid(pinned: List<ControlAction>, bleManager: DashKitBleManager?, modifier: Modifier) {
+    val rows = pinned.chunked(2)
+    val scroll = rememberLazyListState()
+    Box(modifier.fillMaxWidth()) {
+        LazyColumn(state = scroll, modifier = Modifier.fillMaxWidth().heightIn(max = 208.dp).padding(end = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(rows, key = { it.first().id }) { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { action -> PinnedTile(action, bleManager, Modifier.weight(1f)) }
+                    if (row.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+        Canvas(Modifier.matchParentSize()) {
+            val viewport = scroll.layoutInfo.viewportEndOffset - scroll.layoutInfo.viewportStartOffset
+            val total = (rows.size * 72.dp.toPx() - 8.dp.toPx()).coerceAtLeast(1f)
+            if (viewport > 0 && total > viewport) {
+                val trackHeight = viewport.toFloat()
+                val thumb = trackHeight * viewport / total
+                val offset = scroll.firstVisibleItemIndex * 72.dp.toPx() + scroll.firstVisibleItemScrollOffset
+                val width = 3.dp.toPx()
+                drawRoundRect(DarkColors.Border, topLeft = Offset(size.width - width, 0f), size = Size(width, trackHeight), cornerRadius = CornerRadius(width))
+                drawRoundRect(DarkColors.TextMuted, topLeft = Offset(size.width - width, (trackHeight - thumb) * (offset / (total - viewport)).coerceIn(0f, 1f)),
+                    size = Size(width, thumb), cornerRadius = CornerRadius(width))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinnedTile(action: ControlAction, bleManager: DashKitBleManager?, modifier: Modifier) {
+    val enabled = bleManager != null
+    val active = action.active()
+    Row(modifier.height(64.dp).clip(RoundedCornerShape(12.dp))
+        .background(if (active) AccentColor.copy(alpha = 0.25f) else DarkColors.SurfaceSelected)
+        .clickable(enabled = enabled) { action.perform(bleManager) }.padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IconChip(action.icon, if (enabled) AccentColor else DarkColors.TextMuted, AccentColor.copy(alpha = 0.12f))
+        Text(stringResource(action.labelRes()), color = if (enabled) Color.White else DarkColors.ContentDisabled,
+            fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Icon(Icons.Rounded.PushPin, contentDescription = stringResource(R.string.control_pinned_cd),
+            tint = DarkColors.TextMuted, modifier = Modifier.size(12.dp))
+    }
 }
 
 @Composable
@@ -445,7 +468,7 @@ private fun InfoWidget(
             .then(if (fillHeight) Modifier.fillMaxHeight() else Modifier.aspectRatio(1.4f))
             .background(DarkColors.Surface, RoundedCornerShape(16.dp))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(16.dp),
+            .padding(if (fillHeight) 12.dp else 16.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         IconChip(icon = icon, tint = AccentColor, background = AccentColor.copy(alpha = 0.14f))
@@ -453,14 +476,16 @@ private fun InfoWidget(
             Text(
                 text = value,
                 color = Color.White,
-                fontSize = 26.sp,
+                fontSize = if (fillHeight) 22.sp else 26.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
             )
             Text(
                 text = label,
                 color = DarkColors.TextMuted,
-                fontSize = 13.sp
+                fontSize = if (fillHeight) 12.sp else 13.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

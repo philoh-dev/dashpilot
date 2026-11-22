@@ -362,7 +362,7 @@ class MainActivity : ComponentActivity() {
                                     activeSourceType = activeSourceType,
                                     bleManager = manager,
                                     dashState = dashStateFlow,
-                                    pinnedControlId = pinnedControl,
+                                    pinnedControlIds = pinnedControl,
                                     teslaStatus = teslaStatus,
                                     teslaResetPending = teslaResetPending,
                                     onEnrollTesla = { navController.navigate(TeslaEnrollRoute) },
@@ -419,7 +419,7 @@ class MainActivity : ComponentActivity() {
                                 ControlScreen(
                                     isRoot = true,
                                     bleManager = manager,
-                                    pinnedControlId = pinnedControl,
+                                    pinnedControlIds = pinnedControl,
                                     onTogglePin = { connectionVM.togglePinnedControl(context, it) },
                                     fingerActions = fingerActions,
                                     onSetFingerAction = { fingers, id ->

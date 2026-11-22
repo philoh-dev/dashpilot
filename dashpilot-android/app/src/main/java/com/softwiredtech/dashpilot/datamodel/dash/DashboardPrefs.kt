@@ -27,6 +27,7 @@ const val PREF_CAR_MODEL = "car_model"
 private const val PREF_JUNIPER = "juniper"
 const val PREF_ONBOARDING_COMPLETED = "onboarding_completed"
 const val PREF_PINNED_CONTROL = "pinned_control"
+const val PREF_PINNED_CONTROLS = "pinned_controls"
 
 // Automations
 const val PREF_WIPER_OFF_AUTOMATION = "wiper_off_automation"
@@ -134,18 +135,17 @@ fun setOnboardingCompleted(context: Context, value: Boolean = true) {
         .edit { putBoolean(PREF_ONBOARDING_COMPLETED, value) }
 }
 
-fun getPinnedControl(context: Context): String? =
-    context.getSharedPreferences(DASH_PREFS_NAME, Context.MODE_PRIVATE)
-        .getString(PREF_PINNED_CONTROL, null)
+fun getPinnedControls(context: Context): List<String> {
+    val prefs = context.getSharedPreferences(DASH_PREFS_NAME, Context.MODE_PRIVATE)
+    return PinnedControls.decode(prefs.getString(PREF_PINNED_CONTROLS, null),
+        prefs.getString(PREF_PINNED_CONTROL, null))
+}
 
-fun setPinnedControl(context: Context, id: String?) {
+fun setPinnedControls(context: Context, ids: List<String>) {
     context.getSharedPreferences(DASH_PREFS_NAME, Context.MODE_PRIVATE)
         .edit {
-            if (id.isNullOrBlank()) {
-                remove(PREF_PINNED_CONTROL)
-            } else {
-                putString(PREF_PINNED_CONTROL, id)
-            }
+            putString(PREF_PINNED_CONTROLS, ids.distinct().joinToString(","))
+            remove(PREF_PINNED_CONTROL)
         }
 }
 

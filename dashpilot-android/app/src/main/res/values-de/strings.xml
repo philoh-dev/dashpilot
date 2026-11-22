@@ -213,7 +213,7 @@
     <string name="unit_min">Min.</string>
 
     <!-- Home -->
-    <string name="home_pinned">Angeheftet</string>
+    <string name="home_pinned">Angeheftete Befehle</string>
     <string name="home_automations">Automatisierungen</string>
     <string name="home_controls">Befehle</string>
     <string name="home_drive">Fahren</string>
@@ -366,7 +366,7 @@
     <string name="commands_category_collapse">Kategorie zuklappen</string>
     <string name="commands_category_expanded">Aufgeklappt</string>
     <string name="commands_category_collapsed">Zugeklappt</string>
-    <string name="drive_start">Fahrt starten</string>
+    <string name="drive_start">Dashboard öffnen</string>
     <string name="settings_auto_start_drive">Autostart</string>
     <string name="settings_auto_start_drive_description">Startet das Dashboard automatisch, sobald eine Verbindung besteht und von Parken in einen anderen Gang geschaltet wird.</string>
     <string name="dashboard_gallery_preview">Vorschau</string>

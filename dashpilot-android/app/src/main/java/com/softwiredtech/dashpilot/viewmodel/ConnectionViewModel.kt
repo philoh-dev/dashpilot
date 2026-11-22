@@ -40,8 +40,9 @@ import com.softwiredtech.dashpilot.datamodel.dash.DEFAULT_SHOW_CAR_BATTERY
 import com.softwiredtech.dashpilot.datamodel.dash.DEFAULT_SHOW_ODOMETER
 import com.softwiredtech.dashpilot.datamodel.dash.DEFAULT_SHOW_PHONE_BATTERY
 import com.softwiredtech.dashpilot.datamodel.dash.DEFAULT_USE_IMPERIAL
-import com.softwiredtech.dashpilot.datamodel.dash.getPinnedControl
-import com.softwiredtech.dashpilot.datamodel.dash.setPinnedControl
+import com.softwiredtech.dashpilot.datamodel.dash.getPinnedControls
+import com.softwiredtech.dashpilot.datamodel.dash.setPinnedControls
+import com.softwiredtech.dashpilot.datamodel.dash.PinnedControls
 import com.softwiredtech.dashpilot.datamodel.dash.getFingerActions
 import com.softwiredtech.dashpilot.datamodel.dash.setFingerActions
 import com.softwiredtech.dashpilot.datamodel.dash.getWiperOffAutomation
@@ -112,7 +113,7 @@ class ConnectionViewModel(private var networkUtil: NetworkUtil) : ViewModel() {
         _hasAutoNavigatedToDashboard.value = true
     }
 
-    private val _pinnedControl = MutableStateFlow<String?>(null)
+    private val _pinnedControl = MutableStateFlow<List<String>>(emptyList())
     private val _autoStartDrive = MutableStateFlow(false)
     val autoStartDrive = _autoStartDrive.asStateFlow()
     val autoStartDriveGate = AutoStartDriveGate()
@@ -129,12 +130,12 @@ class ConnectionViewModel(private var networkUtil: NetworkUtil) : ViewModel() {
     val pinnedControl = _pinnedControl.asStateFlow()
 
     fun loadPinnedControl(context: Context) {
-        _pinnedControl.value = getPinnedControl(context)
+        _pinnedControl.value = getPinnedControls(context)
     }
 
     fun togglePinnedControl(context: Context, id: String) {
-        val next = if (_pinnedControl.value == id) null else id
-        setPinnedControl(context, next)
+        val next = PinnedControls.toggle(_pinnedControl.value, id)
+        setPinnedControls(context, next)
         _pinnedControl.value = next
     }
 

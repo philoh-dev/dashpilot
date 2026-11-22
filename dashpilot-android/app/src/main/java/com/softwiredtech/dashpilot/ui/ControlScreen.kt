@@ -54,7 +54,7 @@ import com.softwiredtech.dashpilot.R
 @Composable
 fun ControlScreen(
     bleManager: DashKitBleManager?,
-    pinnedControlId: String?,
+    pinnedControlIds: List<String>,
     onTogglePin: (String) -> Unit,
     fingerActions: Map<Int, String>,
     onSetFingerAction: (fingers: Int, id: String?) -> Unit,
@@ -101,7 +101,7 @@ fun ControlScreen(
                 ControlsTab(
                     bleManager = bleManager,
                     enabled = enabled,
-                    pinnedControlId = pinnedControlId,
+                    pinnedControlIds = pinnedControlIds,
                     onTogglePin = onTogglePin,
                     expandedCategories = expandedCategories,
                     onToggleCategory = { id ->
@@ -125,7 +125,7 @@ fun ControlScreen(
 private fun ControlsTab(
     bleManager: DashKitBleManager?,
     enabled: Boolean,
-    pinnedControlId: String?,
+    pinnedControlIds: List<String>,
     onTogglePin: (String) -> Unit,
     expandedCategories: List<String>,
     onToggleCategory: (String) -> Unit
@@ -172,7 +172,7 @@ private fun ControlsTab(
                             actions.forEach { action ->
                                 ControlActionButton(
                                     action = action,
-                                    pinned = action.id == pinnedControlId,
+                                    pinned = action.id in pinnedControlIds,
                                     enabled = enabled,
                                     onClick = { action.perform(bleManager) },
                                     onLongClick = { onTogglePin(action.id) }

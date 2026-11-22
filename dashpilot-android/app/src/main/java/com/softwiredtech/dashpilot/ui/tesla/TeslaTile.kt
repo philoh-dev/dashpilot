@@ -44,7 +44,7 @@ internal fun teslaTileTextRes(status: TeslaStatus, resetPending: Boolean): Int? 
 }
 
 @Composable
-fun TeslaTile(status: TeslaStatus, resetPending: Boolean, onEnroll: () -> Unit) {
+fun TeslaTile(status: TeslaStatus, resetPending: Boolean, onEnroll: () -> Unit, embedded: Boolean = false) {
     val tapEnabled = !resetPending && (
         status.linkState == TeslaLinkState.Staged ||
             status.linkState == TeslaLinkState.NeverEnrolled ||
@@ -70,7 +70,7 @@ fun TeslaTile(status: TeslaStatus, resetPending: Boolean, onEnroll: () -> Unit) 
             .clip(RoundedCornerShape(16.dp))
             .background(DarkColors.Surface)
             .then(if (tapEnabled) Modifier.clickable(onClick = onEnroll) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = if (embedded) 0.dp else 16.dp, vertical = if (embedded) 8.dp else 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -101,5 +101,5 @@ fun TeslaTile(status: TeslaStatus, resetPending: Boolean, onEnroll: () -> Unit) 
             Text(text = "›", color = DarkColors.TextMuted, fontSize = 20.sp)
         }
     }
-    Spacer(Modifier.height(12.dp))
+    if (!embedded) Spacer(Modifier.height(12.dp))
 }

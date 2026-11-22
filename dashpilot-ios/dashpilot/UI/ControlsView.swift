@@ -6,6 +6,8 @@ struct ControlsView: View {
     @Environment(ConnectionViewModel.self) var connectionVM
 
     @AppStorage("pinned_control_id") var pinnedControlId: String = ""
+    @AppStorage("pinned_control_ids") private var pinnedSelection = PinnedControls.legacySelection
+    private var pinnedIds: [String] { PinnedControls.decode(pinnedSelection, legacy: pinnedControlId) }
     @State private var selectedTab = 0
     @State private var expandedCategories: Set<ControlCategory> = []
 
@@ -78,7 +80,8 @@ struct ControlsView: View {
     }
 
     private func togglePin(_ id: String) {
-        pinnedControlId = (pinnedControlId == id) ? "" : id
+        pinnedSelection = PinnedControls.toggling(id, in: pinnedIds)
+        pinnedControlId = ""
     }
 
     private func categorySection(_ category: ControlCategory) -> some View {
@@ -94,7 +97,7 @@ struct ControlsView: View {
                 ForEach(controls) { control in
                     ControlActionButton(
                         action: control,
-                        pinned: control.id == pinnedControlId,
+                        pinned: pinnedIds.contains(control.id),
                         enabled: controlsEnabled,
                         onTap: { control.perform(connectionVM.bleManager) },
                         onLongPress: { togglePin(control.id) }

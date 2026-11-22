@@ -1,6 +1,19 @@
 import SwiftUI
 import Observation
 
+/// Preserve the former single pin until the user first edits the ordered list.
+enum PinnedControls {
+    static let legacySelection = "__legacy__"
+    static func decode(_ encoded: String, legacy: String) -> [String] {
+        let values = (encoded == legacySelection ? legacy : encoded).split(separator: ",").map(String.init)
+        var seen = Set<String>()
+        return values.filter { !$0.isEmpty && seen.insert($0).inserted }
+    }
+    static func toggling(_ id: String, in ids: [String]) -> String {
+        (ids.contains(id) ? ids.filter { $0 != id } : ids + [id]).joined(separator: ",")
+    }
+}
+
 /// Session-scoped toggle state for controls the firmware exposes as separate
 /// on/off (or open/close) opcodes — there is no readback from the car, so this
 /// is shared in-memory between the Controls and Home screens and reset per run.

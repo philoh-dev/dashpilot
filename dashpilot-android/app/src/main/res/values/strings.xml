@@ -213,7 +213,7 @@
     <string name="unit_min">min</string>
 
     <!-- Home -->
-    <string name="home_pinned">Pinned</string>
+    <string name="home_pinned">Pinned commands</string>
     <string name="home_automations">Automations</string>
     <string name="home_controls">Controls</string>
     <string name="home_drive">Drive</string>
@@ -364,7 +364,7 @@
     <string name="commands_category_collapse">Collapse category</string>
     <string name="commands_category_expanded">Expanded</string>
     <string name="commands_category_collapsed">Collapsed</string>
-    <string name="drive_start">Start driving</string>
+    <string name="drive_start">Open dashboard</string>
     <string name="settings_auto_start_drive">Autostart</string>
     <string name="dashboard_gallery_preview">Preview</string>
     <string name="dashboard_gallery_use">Use dashboard</string>

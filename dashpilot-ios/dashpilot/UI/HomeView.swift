@@ -5,6 +5,7 @@ struct HomeView: View {
     @Environment(ConnectionViewModel.self) var connectionVM
 
     @AppStorage("pinned_control_id") var pinnedControlId: String = ""
+    @AppStorage("pinned_control_ids") private var pinnedSelection = PinnedControls.legacySelection
     // Read the session's cached snapshot immediately when returning to Drive.
     // A new per-view stream starts asynchronously and can flash empty values.
     private var dash: DashState? {
@@ -18,21 +19,20 @@ struct HomeView: View {
 
             GeometryReader { geo in
                 let landscape = geo.size.width > geo.size.height
-                ScrollView {
-                    VStack(spacing: 0) {
-                        if landscape {
-                            header(showDataSource: true)
-                            Spacer().frame(height: 8)
-                        }
-                        if landscape {
-                            landscapeContent(
-                                minHeight: geo.size.height - 2 * DashMetrics.screenPadding - 52
-                            )
-                        } else {
+                if landscape {
+                    landscapeContent(
+                        width: max(0, geo.size.width - 2 * DashMetrics.screenPadding),
+                        height: max(0, geo.size.height - 24)
+                    )
+                    .padding(.horizontal, DashMetrics.screenPadding)
+                    .padding(.vertical, 12)
+                } else {
+                    ScrollView {
+                        VStack(spacing: 0) {
                             portraitContent
                         }
+                        .padding(DashMetrics.screenPadding)
                     }
-                    .padding(DashMetrics.screenPadding)
                 }
             }
         }
@@ -43,44 +43,104 @@ struct HomeView: View {
         VStack(spacing: 0) {
             widgetGrid(fillHeight: false)
             Spacer().frame(height: 32)
-            if hasPinnedControl {
-                pinnedSection
-                Spacer().frame(height: 24)
-            }
-            actionButtons
+            connectionPanel(gridHeight: pinnedGridHeight, bounded: false)
             Spacer().frame(height: 12)
             DataSourceMenu(navigationPath: $navigationPath)
         }
     }
 
-    private func landscapeContent(minHeight: CGFloat) -> some View {
-        HStack(alignment: .top, spacing: DashMetrics.screenPadding) {
+    private func landscapeContent(width: CGFloat, height: CGFloat) -> some View {
+        let availableWidth = max(0, width - DashMetrics.screenPadding)
+        // Status, section label, gaps, panel padding, and the fixed dashboard button.
+        let gridHeight = min(pinnedGridHeight, max(0, height - 220))
+        return HStack(alignment: .top, spacing: DashMetrics.screenPadding) {
             widgetGrid(fillHeight: true)
-            VStack(spacing: DashMetrics.gridGap) {
-                VStack(spacing: 12) {
-                    Spacer(minLength: 0)
-                    if let control = pinnedControl {
-                        pinnedButton(control)
-                    }
-                    driveButton
-                }
-                .frame(maxHeight: .infinity)
-            }
+                .frame(width: availableWidth * 0.4, height: height)
+            connectionPanel(gridHeight: gridHeight, bounded: true)
+                .frame(width: availableWidth * 0.6, height: height)
         }
-        .frame(minHeight: minHeight)
     }
 
-    private func header(showDataSource: Bool) -> some View {
-        ZStack {
-            HStack {
-                Spacer()
-                if showDataSource {
-                    DataSourceMenu(navigationPath: $navigationPath, alignment: .trailing)
-                        .offset(x: 12)
+    private func connectionPanel(gridHeight: CGFloat, bounded: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Circle().fill(connectionVM.connectionStatus == .connected ? Color.dashAccent : Color.dashTextMuted)
+                    .frame(width: 8, height: 8)
+                Text(verbatim: "Tesla").font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
+                Spacer(minLength: 8)
+                Text(connectionLabel).font(.system(size: 13)).foregroundColor(.dashTextMuted)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .frame(minHeight: 28)
+            if !pinnedControls.isEmpty || bounded {
+                Divider().overlay(Color.white.opacity(0.08))
+                HStack(spacing: 8) {
+                    if !pinnedControls.isEmpty {
+                        Text("Pinned commands").font(.system(size: 13, weight: .semibold)).foregroundColor(.white)
+                            .layoutPriority(1)
+                    }
+                    if bounded {
+                        DataSourceMenu(navigationPath: $navigationPath, alignment: .trailing)
+                    }
                 }
             }
+            if !pinnedControls.isEmpty {
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                        ForEach(pinnedControls) { control in pinnedTile(control) }
+                    }
+                    .padding(.trailing, 6)
+                }
+                .frame(height: gridHeight)
+                .scrollIndicators(.visible)
+                .scrollBounceBehavior(.basedOnSize)
+            }
+            if bounded { Spacer(minLength: 0) }
+            driveButton
         }
-        .frame(height: 44)
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: bounded ? .infinity : nil, alignment: .topLeading)
+        .background(Color.dashSurface)
+        .clipShape(RoundedRectangle(cornerRadius: DashMetrics.corner))
+    }
+
+    private var connectionLabel: LocalizedStringKey {
+        switch connectionVM.connectionStatus {
+        case .connected: return "Connected"
+        case .connecting: return "Connecting…"
+        case .disconnected, .error: return "Disconnected"
+        }
+    }
+
+    private var pinnedControls: [ControlAction] {
+        PinnedControls.decode(pinnedSelection, legacy: pinnedControlId).compactMap { controlById($0) }
+    }
+
+    private var pinnedGridHeight: CGFloat {
+        let rows = min(3, (pinnedControls.count + 1) / 2)
+        return CGFloat(rows * 64 + max(0, rows - 1) * 8)
+    }
+
+    private func pinnedTile(_ control: ControlAction) -> some View {
+        let enabled = connectionVM.bleManager != nil
+        return Button { control.perform(connectionVM.bleManager) } label: {
+            HStack(spacing: 8) {
+                IconChip(systemName: control.icon, tint: enabled ? .dashAccent : .dashTextMuted,
+                         background: Color.dashAccent.opacity(0.12))
+                Text(control.label()).font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(enabled ? .white : .dashTextMuted)
+                    .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "pin.fill").font(.system(size: 10)).foregroundColor(.dashTextMuted)
+                    .accessibilityHidden(true)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity)
+            .frame(height: 64)
+            .background(control.active() ? Color.dashAccent.opacity(0.25) : Color.white.opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
     }
 
     private func widgetGrid(fillHeight: Bool) -> some View {
@@ -131,44 +191,10 @@ struct HomeView: View {
         }
     }
 
-    private var pinnedControl: ControlAction? {
-        pinnedControlId.isEmpty ? nil : controlById(pinnedControlId)
-    }
-
-    private var hasPinnedControl: Bool { pinnedControl != nil }
-
-    @ViewBuilder
-    private var pinnedSection: some View {
-        if let control = pinnedControl {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Pinned")
-                    .foregroundColor(.dashTextMuted)
-                    .font(.system(size: 13, weight: .semibold))
-                pinnedButton(control)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    private func pinnedButton(_ control: ControlAction) -> some View {
-        ControlActionButton(
-            action: control,
-            pinned: true,
-            enabled: connectionVM.bleManager != nil,
-            onTap: { control.perform(connectionVM.bleManager) },
-            onLongPress: {}
-        )
-    }
-
-    private var actionButtons: some View {
-        VStack(spacing: 12) {
-            driveButton
-        }
-    }
 
     private var driveButton: some View {
         ActionButton(
-            label: "Start driving",
+            label: "Open dashboard",
             icon: "car.fill",
             accent: true,
             enabled: connectionVM.connectionStatus == .connected
@@ -292,16 +318,17 @@ private struct InfoWidget: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
                     .foregroundColor(.white)
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.system(size: fillHeight ? 22 : 26, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Text(label)
                     .foregroundColor(.dashTextMuted)
-                    .font(.system(size: 13))
+                    .font(.system(size: fillHeight ? 12 : 13))
+                    .lineLimit(2)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(16)
+        .padding(fillHeight ? 12 : 16)
         .background(Color.dashSurface)
         .clipShape(RoundedRectangle(cornerRadius: DashMetrics.corner))
     }

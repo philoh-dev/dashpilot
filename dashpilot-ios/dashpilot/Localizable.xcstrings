@@ -2756,6 +2756,23 @@
         }
       }
     },
+    "Pinned commands" : {
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Angeheftete Befehle"
+          }
+        },
+        "hu": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rögzített parancsok"
+          }
+        }
+      }
+    },
     "Pinned" : {
       "localizations" : {
         "de" : {
@@ -3324,19 +3341,19 @@
         }
       }
     },
-    "Start driving" : {
+    "Open dashboard" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fahrt starten"
+            "value" : "Dashboard öffnen"
           }
         },
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vezetés indítása"
+            "value" : "Műszerfal megnyitása"
           }
         }
       }

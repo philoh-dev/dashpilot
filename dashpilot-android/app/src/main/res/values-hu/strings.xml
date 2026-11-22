@@ -212,7 +212,7 @@
     <string name="unit_min">perc</string>
 
     <!-- Home -->
-    <string name="home_pinned">Rögzítve</string>
+    <string name="home_pinned">Rögzített parancsok</string>
     <string name="home_automations">Automatizációk</string>
     <string name="home_controls">Parancsok</string>
     <string name="home_drive">Vezetés</string>
@@ -365,7 +365,7 @@
     <string name="commands_category_collapse">Kategória összecsukása</string>
     <string name="commands_category_expanded">Kibontva</string>
     <string name="commands_category_collapsed">Összecsukva</string>
-    <string name="drive_start">Vezetés indítása</string>
+    <string name="drive_start">Műszerfal megnyitása</string>
     <string name="settings_auto_start_drive">Automatikus indítás</string>
     <string name="settings_auto_start_drive_description">Csatlakozás után automatikusan elindítja a műszerfalat, amikor a váltót P állásból másik fokozatba kapcsolod.</string>
     <string name="dashboard_gallery_preview">Előnézet</string>
