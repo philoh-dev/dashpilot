@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.softwiredtech.dashpilot.BuildConfig
@@ -401,7 +402,7 @@ private fun PinnedGrid(pinned: List<ControlAction>, bleManager: DashKitBleManage
     val rows = pinned.chunked(2)
     val scroll = rememberLazyListState()
     Box(modifier.fillMaxWidth()) {
-        LazyColumn(state = scroll, modifier = Modifier.fillMaxWidth().heightIn(max = 208.dp).padding(end = 8.dp),
+        LazyColumn(state = scroll, modifier = Modifier.fillMaxWidth().heightIn(max = 208.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(rows, key = { it.first().id }) { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -418,8 +419,10 @@ private fun PinnedGrid(pinned: List<ControlAction>, bleManager: DashKitBleManage
                 val thumb = trackHeight * viewport / total
                 val offset = scroll.firstVisibleItemIndex * 72.dp.toPx() + scroll.firstVisibleItemScrollOffset
                 val width = 3.dp.toPx()
-                drawRoundRect(DarkColors.Border, topLeft = Offset(size.width - width, 0f), size = Size(width, trackHeight), cornerRadius = CornerRadius(width))
-                drawRoundRect(DarkColors.TextMuted, topLeft = Offset(size.width - width, (trackHeight - thumb) * (offset / (total - viewport)).coerceIn(0f, 1f)),
+                // Use the panel's outer padding for the indicator, preserving the button's content edge.
+                val scrollbarX = if (layoutDirection == LayoutDirection.Ltr) size.width + 5.dp.toPx() else -8.dp.toPx()
+                drawRoundRect(DarkColors.Border, topLeft = Offset(scrollbarX, 0f), size = Size(width, trackHeight), cornerRadius = CornerRadius(width))
+                drawRoundRect(DarkColors.TextMuted, topLeft = Offset(scrollbarX, (trackHeight - thumb) * (offset / (total - viewport)).coerceIn(0f, 1f)),
                     size = Size(width, thumb), cornerRadius = CornerRadius(width))
             }
         }

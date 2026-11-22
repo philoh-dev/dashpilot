@@ -89,8 +89,10 @@ struct HomeView: View {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
                         ForEach(pinnedControls) { control in pinnedTile(control) }
                     }
-                    .padding(.trailing, 6)
+                    .padding(.trailing, 8)
                 }
+                // Extend only the scroll viewport into the panel padding; tiles retain the button's width.
+                .padding(.trailing, -8)
                 .frame(height: gridHeight)
                 .scrollIndicators(.visible)
                 .scrollBounceBehavior(.basedOnSize)
